@@ -1,0 +1,26 @@
+{
+  "members": [
+    {
+      "id": "m0utcaq",
+      "name": "Meet",
+      "dailyPayroll": 500,
+      "createdAt": "2025-10-24T11:37:06.947Z"
+    }
+  ],
+  "attendance": [
+    {
+      "id": "2965xnn",
+      "memberId": "m0utcaq",
+      "date": "2025-10-24",
+      "status": "present",
+      "advance": 1067
+    },
+    {
+      "id": "6w8zfwd",
+      "memberId": "m0utcaq",
+      "date": "2025-10-25",
+      "status": "present",
+      "advance": 0
+    }
+  ]
+}
