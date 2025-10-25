@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
 export default function AttendanceTable({ members, date, onUpdate }) {
@@ -64,7 +65,9 @@ export default function AttendanceTable({ members, date, onUpdate }) {
             const a = attendanceMap[m.id] || {};
             return (
               <tr key={m.id} className="border-t hover:bg-gray-50">
-                <td className="p-2 font-medium">{m.name}</td>
+                <td className="p-2 font-medium">
+                  <Link href={`/members/${m.id}`}>{m.name}</Link>
+                </td>
                 <td className="p-2">₹{m.daily_salary || 0}</td>
                 <td className="p-2">
                   <select
