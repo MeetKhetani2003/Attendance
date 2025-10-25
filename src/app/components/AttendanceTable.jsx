@@ -13,7 +13,7 @@ export default function AttendanceTable({ members, date, onUpdate }) {
     const res = await fetch(`/api/attendance?date=${date}`);
     const data = await res.json();
     const map = {};
-    (data || []).forEach((a) => (map[a.memberId] = a));
+    (data || []).forEach((a) => (map[a.member_id] = a));
     setAttendanceMap(map);
   }
 
@@ -64,15 +64,8 @@ export default function AttendanceTable({ members, date, onUpdate }) {
             const a = attendanceMap[m.id] || {};
             return (
               <tr key={m.id} className="border-t hover:bg-gray-50">
-                <td className="p-2">
-                  <a
-                    href={`/members/${m.id}`}
-                    className="font-medium text-blue-600 hover:underline"
-                  >
-                    {m.name}
-                  </a>
-                </td>
-                <td className="p-2">₹{m.dailyPayroll || 0}</td>
+                <td className="p-2 font-medium">{m.name}</td>
+                <td className="p-2">₹{m.daily_salary || 0}</td>
                 <td className="p-2">
                   <select
                     className="border rounded px-2 py-1"

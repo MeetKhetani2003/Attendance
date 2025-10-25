@@ -1,48 +1,52 @@
 import React from "react";
 
 export default async function MemberProfile({ params }) {
-  const { id } = await params; // await params
+  const { id } = await params; // await params for dynamic routes
 
-  // build absolute URL
+  // Build absolute URL
   const base =
     process.env.NEXT_PUBLIC_BASE_PATH ||
     process.env.NEXT_PUBLIC_URL ||
     "http://localhost:3000";
 
-  // fetch member info and attendance
+  // Fetch member info and attendance
   const [memberRes, attendanceRes] = await Promise.all([
-    fetch(`${base}/api/members`, { cache: "no-store" }),
+    fetch(`${base}/api/members/${id}`, { cache: "no-store" }),
     fetch(`${base}/api/attendance/member/${id}`, { cache: "no-store" }),
   ]);
 
-  const members = await memberRes.json();
+  // Parse responses
+  const member = await memberRes.json();
   const attendance = await attendanceRes.json();
-  const member = members.find((m) => m.id === id);
 
+  // Handle missing member
   if (!member) {
     return <div className="p-6 text-red-500">Member not found</div>;
   }
 
-  // calculate totals
-  const totalDays = attendance.length;
+  // Extract DB fields safely
+  const dailySalary = Number(member.daily_salary || 0);
+  const joinedAt = new Date(member.created_at);
+
+  // Attendance calculations
   const presentDays = attendance.filter((a) => a.status === "present").length;
   const halfDays = attendance.filter((a) => a.status === "half").length;
   const absentDays = attendance.filter((a) => a.status === "absent").length;
   const totalAdvance = attendance.reduce((sum, a) => sum + (a.advance || 0), 0);
+
   const totalSalary =
-    presentDays * member.dailyPayroll +
-    halfDays * (member.dailyPayroll / 2) -
-    totalAdvance;
+    presentDays * dailySalary + halfDays * (dailySalary / 2) - totalAdvance;
 
   return (
     <div className="p-6 space-y-6">
+      {/* Member Info */}
       <h1 className="text-2xl font-bold">{member.name}</h1>
       <p className="text-gray-500">
-        Daily Salary: ₹{member.dailyPayroll} <br />
-        Joined: {new Date(member.createdAt).toLocaleDateString()}
+        Daily Salary: ₹{dailySalary} <br />
+        Joined: {joinedAt.toLocaleDateString()}
       </p>
 
-      {/* Summary */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-blue-100 p-4 rounded shadow text-center">
           <p className="text-sm text-gray-700">Present</p>

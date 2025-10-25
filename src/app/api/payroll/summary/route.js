@@ -1,29 +1,36 @@
+import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
-import { readDB } from "../../_helpers/db";
 
 export async function GET() {
-  const db = readDB();
+  const { rows: members } = await sql`SELECT * FROM members`;
+  const { rows: attendance } = await sql`SELECT * FROM attendance`;
 
-  const result = db.members.map((member) => {
-    const attendance = db.attendance.filter((a) => a.memberId === member.id);
-    const presentDays = attendance.filter((a) => a.status === "present").length;
-    const halfDays = attendance.filter((a) => a.status === "half").length;
-    const absents = attendance.filter((a) => a.status === "absent").length;
+  const result = members.map((member) => {
+    const records = attendance.filter((a) => a.member_id === member.id);
+    const presentDays = records.filter((r) => r.status === "present").length;
+    const halfDays = records.filter((r) => r.status === "half").length;
+    const absents = records.filter((r) => r.status === "absent").length;
 
     const totalSalary =
-      presentDays * member.dailySalary + halfDays * (member.dailySalary / 2);
-    const advances = attendance.reduce((sum, a) => sum + (a.advance || 0), 0);
+      presentDays * Number(member.daily_salary) +
+      halfDays * (Number(member.daily_salary) / 2);
+
+    const advances = records.reduce(
+      (sum, r) => sum + (Number(r.advance) || 0),
+      0
+    );
+
     const payable = totalSalary - advances;
 
     return {
       memberId: member.id,
       name: member.name,
-      presentDays,
-      halfDays,
-      absents,
-      totalSalary,
-      advances,
-      payable,
+      daysPresent: presentDays,
+      daysHalf: halfDays,
+      daysAbsent: absents,
+      totalEarned: totalSalary,
+      totalAdvance: advances,
+      balance: payable,
     };
   });
 

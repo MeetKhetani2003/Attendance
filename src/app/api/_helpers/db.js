@@ -1,29 +1,64 @@
-import fs from "fs";
-import path from "path";
+import { sql } from "@vercel/postgres";
 
-const dbPath = path.join(process.cwd(), "data", "db.json");
-
-function ensureDB() {
-  const dir = path.dirname(dbPath);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(dbPath))
-    fs.writeFileSync(
-      dbPath,
-      JSON.stringify({ members: [], attendance: [] }, null, 2)
-    );
+// --- Members ---
+export async function getMembers() {
+  const { rows } = await sql`SELECT * FROM members ORDER BY created_at DESC`;
+  return rows;
 }
 
-export function readDB() {
-  ensureDB();
-  const raw = fs.readFileSync(dbPath, "utf-8");
-  return JSON.parse(raw);
+export async function getMemberById(id) {
+  const { rows } = await sql`SELECT * FROM members WHERE id = ${id}`;
+  return rows[0] || null;
 }
 
-export function writeDB(obj) {
-  ensureDB();
-  fs.writeFileSync(dbPath, JSON.stringify(obj, null, 2));
+export async function addMember(name, daily_salary) {
+  await sql`INSERT INTO members (name, daily_salary) VALUES (${name}, ${daily_salary})`;
 }
 
-export function genId() {
-  return Math.random().toString(36).slice(2, 9);
+// --- Update Member ---
+export async function updateMember(id, name, daily_salary) {
+  await sql`UPDATE members SET name=${name}, daily_salary=${daily_salary} WHERE id=${id}`;
+}
+
+export async function deleteMember(id) {
+  await sql`DELETE FROM members WHERE id=${id}`;
+}
+
+// --- Attendance ---
+export async function getAttendanceByDate(date) {
+  const { rows } = await sql`SELECT * FROM attendance WHERE date=${date}`;
+  return rows;
+}
+
+export async function markAttendance(member_id, date, status) {
+  const existing = await sql`
+    SELECT * FROM attendance WHERE member_id=${member_id} AND date=${date}
+  `;
+  if (existing.rows.length > 0) {
+    await sql`UPDATE attendance SET status=${status} WHERE member_id=${member_id} AND date=${date}`;
+  } else {
+    await sql`INSERT INTO attendance (member_id, date, status) VALUES (${member_id}, ${date}, ${status})`;
+  }
+}
+
+export async function addAdvance(member_id, date, advance) {
+  const existing = await sql`
+    SELECT * FROM attendance WHERE member_id=${member_id} AND date=${date}
+  `;
+  if (existing.rows.length > 0) {
+    await sql`UPDATE attendance SET advance=${advance} WHERE member_id=${member_id} AND date=${date}`;
+  } else {
+    await sql`INSERT INTO attendance (member_id, date, status, advance) VALUES (${member_id}, ${date}, 'present', ${advance})`;
+  }
+}
+
+export async function getMemberAttendance(member_id) {
+  const { rows } = await sql`
+    SELECT * FROM attendance WHERE member_id=${member_id} ORDER BY date DESC
+  `;
+  return rows;
+}
+
+export async function deleteMemberAttendance(member_id) {
+  await sql`DELETE FROM attendance WHERE member_id=${member_id}`;
 }

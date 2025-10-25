@@ -1,49 +1,49 @@
 import { NextResponse } from "next/server";
-import { readDB, writeDB, genId } from "../_helpers/db.js";
+import { getAttendanceByDate, markAttendance } from "../_helpers/db";
+import { sql } from "@vercel/postgres";
 
-// GET all attendance or by date
 export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const date = searchParams.get("date");
+  try {
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get("date");
+    if (!date) return NextResponse.json([], { status: 200 });
 
-  const db = readDB();
-  const list = date
-    ? db.attendance.filter((a) => a.date === date)
-    : db.attendance;
-  return NextResponse.json(list);
+    const { rows } = await sql`SELECT * FROM attendance WHERE date=${date}`;
+    return NextResponse.json(rows);
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
-// POST -> add attendance for a member
 export async function POST(req) {
-  const body = await req.json(); // { memberId, date, status, advance? }
-  const db = readDB();
-  const { memberId, date, status } = body;
+  try {
+    const { memberId, date, status } = await req.json();
+    if (!memberId || !date)
+      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
 
-  if (!["present", "half", "absent"].includes(status)) {
+    // Check existing
+    const existing = await sql`
+      SELECT * FROM attendance WHERE member_id=${memberId} AND date=${date}
+    `;
+
+    if (existing.rowCount > 0) {
+      await sql`
+        UPDATE attendance
+        SET status=${status}
+        WHERE member_id=${memberId} AND date=${date}
+      `;
+    } else {
+      await sql`
+        INSERT INTO attendance (member_id, date, status)
+        VALUES (${memberId}, ${date}, ${status})
+      `;
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
     return NextResponse.json(
-      { error: "Invalid attendance status" },
-      { status: 400 }
+      { success: false, error: err.message },
+      { status: 500 }
     );
   }
-
-  let record = db.attendance.find(
-    (a) => a.memberId === memberId && a.date === date
-  );
-
-  if (!record) {
-    record = {
-      id: genId(),
-      memberId,
-      date,
-      status,
-      advance: body.advance || 0,
-    };
-    db.attendance.push(record);
-  } else {
-    record.status = status;
-    if (body.advance !== undefined) record.advance = body.advance;
-  }
-
-  writeDB(db);
-  return NextResponse.json(record);
 }

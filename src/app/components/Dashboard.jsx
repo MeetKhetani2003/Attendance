@@ -17,6 +17,8 @@ export default function Dashboard() {
   async function fetchMembers() {
     const res = await fetch("/api/members");
     const data = await res.json();
+    console.log(data);
+
     setMembers(data || []);
   }
 

@@ -1,35 +1,38 @@
+import { sql } from "@vercel/postgres";
 import { NextResponse } from "next/server";
-import { readDB, writeDB, genId } from "../../_helpers/db";
 
 export async function POST(req) {
-  const body = await req.json();
-  const { memberId, date, advance } = body;
+  try {
+    const { memberId, date, advance } = await req.json();
+    if (!memberId || !date || isNaN(advance)) {
+      return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+    }
 
-  if (!memberId || !date) {
+    // Check if attendance record exists
+    const existing = await sql`
+      SELECT * FROM attendance WHERE member_id=${memberId} AND date=${date}
+    `;
+
+    if (existing.rowCount > 0) {
+      // Update advance
+      await sql`
+        UPDATE attendance
+        SET advance = advance + ${advance}
+        WHERE member_id=${memberId} AND date=${date}
+      `;
+    } else {
+      // Insert new record
+      await sql`
+        INSERT INTO attendance (member_id, date, advance)
+        VALUES (${memberId}, ${date}, ${advance})
+      `;
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
     return NextResponse.json(
-      { error: "memberId and date are required" },
-      { status: 400 }
+      { success: false, error: err.message },
+      { status: 500 }
     );
   }
-
-  const db = readDB();
-  let record = db.attendance.find(
-    (a) => a.memberId === memberId && a.date === date
-  );
-
-  if (!record) {
-    record = {
-      id: genId(),
-      memberId,
-      date,
-      status: "",
-      advance: Number(advance) || 0,
-    };
-    db.attendance.push(record);
-  } else {
-    record.advance = (record.advance || 0) + Number(advance);
-  }
-
-  writeDB(db);
-  return NextResponse.json(record);
 }
